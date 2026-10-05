@@ -5,8 +5,8 @@ const vm = require('node:vm');
 const path = require('node:path');
 
 function loadBackend() {
-  const rows = [];
-  const sheet = {
+  const sheets = {};
+  function makeSheet() { const rows = []; return { rows,
     getLastRow: () => rows.length,
     appendRow: row => rows.push(row),
     setFrozenRows: () => {},
@@ -15,16 +15,31 @@ function loadBackend() {
       setNumberFormat: () => {},
       getValues: () => rows.slice(args[0] - 1, args[0] - 1 + args[2]).map(row => row.slice(args[1] - 1, args[1] - 1 + (args[3] || 1)))
     })
-  };
+  }; }
+  const sheet = makeSheet();
+  sheets['測驗紀錄'] = sheet;
   const context = {
-    SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet, insertSheet: () => sheet }), flush: () => {} },
+    SpreadsheetApp: { openById: () => ({ getSheetByName: name => sheets[name] || null, insertSheet: name => (sheets[name] = makeSheet()) }), flush: () => {} },
     LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
     HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode() { return this; } }) },
     console, Date, JSON, String, Number, Math, isFinite
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Code.gs'), 'utf8'), context);
-  return { context, rows };
+  return { context, rows: sheet.rows, sheets };
 }
+
+test('課前測使用獨立頁籤與答案，沒有及格判定', () => {
+  const { context, rows, sheets } = loadBackend();
+  const attemptId = '123e4567-e89b-42d3-a456-426614174010';
+  const response = context.doPost({ parameter: { attemptId, participant: 'A001', answers: 'BBACBCBCCBBC', durationSeconds: '90', assessment: 'pre' } });
+  assert.match(response.html, /"ok":true/);
+  assert.equal(rows.length, 0);
+  assert.equal(sheets['課前測紀錄'].rows.length, 2);
+  assert.equal(sheets['課前測紀錄'].rows[1][3], 100);
+  assert.equal(sheets['課前測紀錄'].rows[1][5], '不設門檻');
+  context.doPost({ parameter: { attemptId, participant: 'A001', answers: 'AAAAAAAAAAAA', durationSeconds: '1', assessment: 'pre' } });
+  assert.equal(sheets['課前測紀錄'].rows.length, 2);
+});
 
 test('試算表端重新計分、記錄每次作答，重送同一識別碼不重複', () => {
   const { context, rows } = loadBackend();

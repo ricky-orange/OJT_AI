@@ -1,5 +1,11 @@
 # AI 教育訓練會後小測驗
 
+## 課前測驗
+
+[`pretest.html`](pretest.html) 是獨立的 12 題課前測頁面，網址為 <https://ricky-orange.github.io/OJT_AI/pretest.html>。題目採用課前測版本，四個類型與會後測相同；課前測不設及格門檻，送出後不向學員顯示分數或正解。請學員在前後測使用相同員工編號。課前作答由 Apps Script 重新計分，寫到同一份試算表的「課前測紀錄」頁籤；原有會後測仍寫到「測驗紀錄」頁籤，現有儀表板仍只統計會後測。
+
+**啟用課前測寫入：**將最新版 [`apps-script/Code.gs`](apps-script/Code.gs) 複製到既有 Apps Script 專案，保留已設定的 `SPREADSHEET_ID`，然後執行 `setupPretestSheet` 建立「課前測紀錄」。接著到「部署 → 管理部署 → 編輯」，選「新版本」並部署；僅更新 GitHub 網頁不足以啟用新頁籤寫入。更新後可用測試員工編號作答一次，確認課前測頁顯示記錄成功，且新資料只出現在「課前測紀錄」。
+
 手機優先的 12 題單選測驗。每題沿用定稿內容，答對至少 10 題及格（10/12 換算為 83 分）；每次測驗在 Google 試算表新增一列，可重複作答。網站是 GitHub Pages 靜態頁面，試算表由 Google Apps Script Web App 接收。
 
 ## 啟用前準備

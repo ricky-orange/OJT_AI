@@ -4,8 +4,10 @@
  */
 var SPREADSHEET_ID = 'PASTE_SPREADSHEET_ID_HERE';
 var SHEET_NAME = '測驗紀錄';
+var PRETEST_SHEET_NAME = '課前測紀錄';
 var SITE_ORIGIN = 'https://ricky-orange.github.io';
 var ANSWER_KEY = ['B', 'D', 'B', 'C', 'B', 'D', 'B', 'A', 'C', 'B', 'C', 'B'];
+var PRETEST_ANSWER_KEY = ['B', 'B', 'A', 'C', 'B', 'C', 'B', 'C', 'C', 'B', 'B', 'C'];
 var CATEGORIES = [
   { label: 'AI 基礎與導入', questions: [1, 3] },
   { label: '工作方式與提示詞', questions: [4, 5, 6] },
@@ -14,9 +16,10 @@ var CATEGORIES = [
 ];
 var HEADERS = ['伺服器時間', '員工編號', '作答識別碼', '分數', '答對題數', '結果', '作答秒數', '第1題', '第2題', '第3題', '第4題', '第5題', '第6題', '第7題', '第8題', '第9題', '第10題', '第11題', '第12題'];
 
-function setupSheet() {
+function setupSheet(name) {
   var spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.insertSheet(SHEET_NAME);
+  var targetName = name || SHEET_NAME;
+  var sheet = spreadsheet.getSheetByName(targetName) || spreadsheet.insertSheet(targetName);
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(HEADERS);
     sheet.setFrozenRows(1);
@@ -25,6 +28,10 @@ function setupSheet() {
     sheet.getRange('B:C').setNumberFormat('@');
   }
   return sheet;
+}
+
+function setupPretestSheet() {
+  return setupSheet(PRETEST_SHEET_NAME);
 }
 
 function doGet(e) {
@@ -103,13 +110,15 @@ function doPost(e) {
     if (!participant || participant.length > 80 || /[\r\n]/.test(participant)) throw new Error('Invalid participant');
     var answers = String(p.answers || '').toUpperCase();
     if (!/^[A-D]{12}$/.test(answers)) throw new Error('Invalid answers');
+    var assessment = String(p.assessment || 'post');
+    if (assessment !== 'pre' && assessment !== 'post') throw new Error('Invalid assessment');
     var duration = Number(p.durationSeconds);
     if (!isFinite(duration) || duration < 0 || duration > 86400) throw new Error('Invalid duration');
 
     var lock = LockService.getScriptLock();
     lock.waitLock(30000);
     try {
-      var sheet = setupSheet();
+      var sheet = setupSheet(assessment === 'pre' ? PRETEST_SHEET_NAME : SHEET_NAME);
       var lastRow = sheet.getLastRow();
       if (lastRow > 1) {
         var previousIds = sheet.getRange(2, 3, lastRow - 1, 1).getValues();
@@ -118,11 +127,12 @@ function doPost(e) {
         }
       }
       var correct = 0;
-      for (var q = 0; q < ANSWER_KEY.length; q++) if (answers.charAt(q) === ANSWER_KEY[q]) correct++;
+      var answerKey = assessment === 'pre' ? PRETEST_ANSWER_KEY : ANSWER_KEY;
+      for (var q = 0; q < answerKey.length; q++) if (answers.charAt(q) === answerKey[q]) correct++;
       var score = Math.round(correct / 12 * 100);
       // 避免試算表將員工編號當作公式執行。
       var safeParticipant = /^[=+\-@]/.test(participant) ? "'" + participant : participant;
-      sheet.appendRow([new Date(), safeParticipant, id, score, correct, correct >= 10 ? '及格' : '未及格', Math.round(duration)].concat(answers.split('')));
+      sheet.appendRow([new Date(), safeParticipant, id, score, correct, assessment === 'pre' ? '不設門檻' : correct >= 10 ? '及格' : '未及格', Math.round(duration)].concat(answers.split('')));
       SpreadsheetApp.flush();
     } finally {
       lock.releaseLock();
