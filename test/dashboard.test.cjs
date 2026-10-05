@@ -27,6 +27,9 @@ test('儀表板讀取 Apps Script 彙總資料並顯示 KPI，不渲染個人識
   assert.match(content.innerHTML, /前後測成效比較/);
   assert.match(content.innerHTML, /\+28 分/);
   assert.match(content.innerHTML, /平均分數前後對照/);
+  assert.match(content.innerHTML, /donut-chart/);
+  assert.match(content.innerHTML, /進步 7 人，持平 1 人，退步 1 人/);
+  assert.doesNotMatch(content.innerHTML, /只計入完成配對/);
   assert.match(content.innerHTML, /average-fill before/);
   assert.match(content.innerHTML, /average-fill after/);
   assert.match(content.innerHTML, /完成配對/);
