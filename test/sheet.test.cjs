@@ -25,6 +25,7 @@ function loadBackend() {
     console, Date, JSON, String, Number, Math, isFinite
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Code.gs'), 'utf8'), context);
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Comparison.gs'), 'utf8'), context);
   return { context, rows: sheet.rows, sheets };
 }
 
@@ -39,6 +40,34 @@ test('課前測使用獨立頁籤與答案，沒有及格判定', () => {
   assert.equal(sheets['課前測紀錄'].rows[1][5], '不設門檻');
   context.doPost({ parameter: { attemptId, participant: 'A001', answers: 'AAAAAAAAAAAA', durationSeconds: '1', assessment: 'pre' } });
   assert.equal(sheets['課前測紀錄'].rows.length, 2);
+});
+
+test('前後測只配對課前先於課後的同一員工，並計算各主題進步', () => {
+  const { context, rows, sheets } = loadBackend();
+  function send(id, participant, answers, assessment) {
+    context.doPost({ parameter: { attemptId: id, participant, answers, durationSeconds: '60', assessment } });
+  }
+  send('123e4567-e89b-42d3-a456-426614174020', 'A001', 'BBAAAAAAAAAA', 'pre');
+  send('123e4567-e89b-42d3-a456-426614174021', 'A001', 'BBACBCBCCBBC', 'pre');
+  send('123e4567-e89b-42d3-a456-426614174022', 'A001', 'BDBCBDBACBCB', 'post');
+  send('123e4567-e89b-42d3-a456-426614174023', 'A002', 'AAAAAAAAAAAA', 'post');
+  send('123e4567-e89b-42d3-a456-426614174024', 'A002', 'BBACBCBCCBBC', 'pre');
+  sheets['課前測紀錄'].rows[1][0] = new Date('2026-10-01T00:00:00Z');
+  sheets['課前測紀錄'].rows[2][0] = new Date('2026-10-02T00:00:00Z');
+  sheets['課前測紀錄'].rows[3][0] = new Date('2026-10-03T00:00:00Z');
+  rows[1][0] = new Date('2026-10-04T00:00:00Z');
+  rows[2][0] = new Date('2026-10-02T00:00:00Z');
+  const result = context.buildComparison_();
+  assert.equal(result.preParticipants, 2);
+  assert.equal(result.postParticipants, 2);
+  assert.equal(result.paired, 1);
+  assert.equal(result.preAverage, 25);
+  assert.equal(result.postAverage, 100);
+  assert.equal(result.averageGain, 75);
+  assert.equal(result.improved, 1);
+  assert.equal(result.categoryRates[0].pre, 100);
+  assert.equal(result.categoryRates[0].post, 100);
+  assert.equal(JSON.stringify(result).includes('A001'), false);
 });
 
 test('試算表端重新計分、記錄每次作答，重送同一識別碼不重複', () => {

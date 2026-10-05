@@ -40,6 +40,7 @@ function doGet(e) {
     if (!/^[0-9a-f-]{36}$/i.test(requestId)) return HtmlService.createHtmlOutput('Invalid request');
     try {
       var payload = buildStats_();
+      payload.comparison = buildComparison_();
       payload.source = 'ojt-ai-stats';
       payload.requestId = requestId;
       payload.ok = true;
