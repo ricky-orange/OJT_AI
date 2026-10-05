@@ -13,7 +13,7 @@ function loadBackend() {
     getRange: (...args) => ({
       setFontWeight: () => ({ setBackground: () => {} }),
       setNumberFormat: () => {},
-      getValues: () => rows.slice(args[0] - 1, args[0] - 1 + args[2]).map(row => [row[args[1] - 1]])
+      getValues: () => rows.slice(args[0] - 1, args[0] - 1 + args[2]).map(row => row.slice(args[1] - 1, args[1] - 1 + (args[3] || 1)))
     })
   };
   const context = {
@@ -46,4 +46,25 @@ test('無效資料不寫入', () => {
   const response = context.doPost({ parameter: { attemptId: 'invalid', participant: '=1+1', answers: 'AAAAAAAAAAAA', durationSeconds: '10' } });
   assert.match(response.html, /"ok":false/);
   assert.equal(rows.length, 0);
+});
+
+test('儀表板只回傳彙總資料，重測取每人最近一次，測試列不計入', () => {
+  const { context } = loadBackend();
+  function send(id, participant, answers) {
+    context.doPost({ parameter: { attemptId: id, participant, answers, durationSeconds: '60' } });
+  }
+  send('123e4567-e89b-42d3-a456-426614174001', 'A001', 'AAAAAAAAAAAA');
+  send('123e4567-e89b-42d3-a456-426614174002', 'A001', 'BDBCBDBACBCB');
+  send('123e4567-e89b-42d3-a456-426614174003', 'A002', 'AAAAAAAAAAAA');
+  send('123e4567-e89b-42d3-a456-426614174004', 'TEST-CODEX-WEB', 'BDBCBDBACBCB');
+  const result = context.buildStats_();
+  assert.equal(result.attempts, 3);
+  assert.equal(result.participants, 2);
+  assert.equal(result.passed, 1);
+  assert.equal(result.passRate, 50);
+  assert.equal(result.questionRates.length, 12);
+  assert.equal(JSON.stringify(result).includes('A001'), false);
+  const response = context.doGet({ parameter: { view: 'stats', requestId: '123e4567-e89b-42d3-a456-426614174005' } });
+  assert.match(response.html, /ojt-ai-stats/);
+  assert.doesNotMatch(response.html, /A001/);
 });

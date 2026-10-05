@@ -21,8 +21,65 @@ function setupSheet() {
   return sheet;
 }
 
-function doGet() {
+function doGet(e) {
+  if (e && e.parameter && e.parameter.view === 'stats') {
+    var requestId = String(e.parameter.requestId || '');
+    if (!/^[0-9a-f-]{36}$/i.test(requestId)) return HtmlService.createHtmlOutput('Invalid request');
+    try {
+      var payload = buildStats_();
+      payload.source = 'ojt-ai-stats';
+      payload.requestId = requestId;
+      payload.ok = true;
+      return messageResponse_(payload);
+    } catch (error) {
+      console.error(error);
+      return messageResponse_({ source: 'ojt-ai-stats', requestId: requestId, ok: false });
+    }
+  }
   return HtmlService.createHtmlOutput('AI 教育訓練測驗接收端已啟用。');
+}
+
+function buildStats_() {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
+  if (!sheet || sheet.getLastRow() < 2) return emptyStats_();
+  var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS.length).getValues();
+  var attempts = 0;
+  var latest = {};
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var participant = String(row[1] || '').trim();
+    var score = Number(row[3]);
+    var answers = row.slice(7, 19).map(function (value) { return String(value).toUpperCase(); });
+    if (!participant || participant.indexOf('TEST-CODEX-') === 0 || !isFinite(score) || answers.length !== 12 || answers.some(function (value) { return !/^[A-D]$/.test(value); })) continue;
+    attempts++;
+    var timestamp = row[0] instanceof Date ? row[0].getTime() : new Date(row[0]).getTime();
+    if (!latest[participant] || timestamp >= latest[participant].timestamp || !isFinite(timestamp)) {
+      latest[participant] = { score: score, answers: answers, timestamp: isFinite(timestamp) ? timestamp : i };
+    }
+  }
+  var records = Object.keys(latest).map(function (key) { return latest[key]; });
+  var participants = records.length;
+  if (!participants) return emptyStats_();
+  var passed = 0, scoreSum = 0, buckets = [0, 0, 0], correct = Array(12).fill(0);
+  records.forEach(function (record) {
+    scoreSum += record.score;
+    if (record.score >= 80) passed++;
+    buckets[record.score < 60 ? 0 : record.score < 80 ? 1 : 2]++;
+    record.answers.forEach(function (answer, q) { if (answer === ANSWER_KEY[q]) correct[q]++; });
+  });
+  return {
+    attempts: attempts,
+    participants: participants,
+    passRate: Math.round(passed / participants * 100),
+    averageScore: Math.round(scoreSum / participants),
+    passed: passed,
+    buckets: buckets,
+    questionRates: correct.map(function (count) { return Math.round(count / participants * 100); })
+  };
+}
+
+function emptyStats_() {
+  return { attempts: 0, participants: 0, passRate: 0, averageScore: 0, passed: 0, buckets: [0, 0, 0], questionRates: Array(12).fill(0) };
 }
 
 function doPost(e) {
@@ -67,7 +124,11 @@ function doPost(e) {
 }
 
 function response_(id, ok) {
-  var payload = JSON.stringify({ source: 'ojt-ai-sheet', attemptId: id, ok: ok }).replace(/</g, '\\u003c');
+  return messageResponse_({ source: 'ojt-ai-sheet', attemptId: id, ok: ok });
+}
+
+function messageResponse_(data) {
+  var payload = JSON.stringify(data).replace(/</g, '\\u003c');
   var origin = JSON.stringify(SITE_ORIGIN);
   var html = '<!doctype html><html><body><script>window.top.postMessage(' + payload + ',' + origin + ');</script></body></html>';
   return HtmlService.createHtmlOutput(html).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
