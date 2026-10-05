@@ -5,10 +5,10 @@ var PRETEST_CATEGORIES = [
   { label: '資料安全與對外發信', questions: [9, 10, 11, 12] }
 ];
 
-function buildComparison_() {
+function buildComparison_(selectedDate, timeZone) {
   var spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var pre = readAssessment_(spreadsheet.getSheetByName(PRETEST_SHEET_NAME), PRETEST_ANSWER_KEY, true);
-  var post = readAssessment_(spreadsheet.getSheetByName(SHEET_NAME), ANSWER_KEY, false);
+  var pre = readAssessment_(spreadsheet.getSheetByName(PRETEST_SHEET_NAME), PRETEST_ANSWER_KEY, true, selectedDate, timeZone);
+  var post = readAssessment_(spreadsheet.getSheetByName(SHEET_NAME), ANSWER_KEY, false, selectedDate, timeZone);
   var ids = Object.keys(pre.latest).filter(function (id) {
     return post.latest[id] && post.latest[id].timestamp >= pre.latest[id].timestamp;
   });
@@ -45,11 +45,12 @@ function buildComparison_() {
   };
 }
 
-function readAssessment_(sheet, answerKey, first) {
+function readAssessment_(sheet, answerKey, first, selectedDate, timeZone) {
   var latest = {}, attempts = 0;
   if (!sheet || sheet.getLastRow() < 2) return { latest: latest, participants: 0, attempts: 0 };
   var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS.length).getValues();
   rows.forEach(function (row, index) {
+    if (selectedDate && recordDate_(row[0], timeZone) !== selectedDate) return;
     var id = String(row[1] || '').trim();
     var answers = row.slice(7, 19).map(function (value) { return String(value).toUpperCase(); });
     var timestamp = row[0] instanceof Date ? row[0].getTime() : new Date(row[0]).getTime();

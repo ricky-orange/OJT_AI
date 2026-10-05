@@ -19,7 +19,8 @@ function loadBackend() {
   const sheet = makeSheet();
   sheets['測驗紀錄'] = sheet;
   const context = {
-    SpreadsheetApp: { openById: () => ({ getSheetByName: name => sheets[name] || null, insertSheet: name => (sheets[name] = makeSheet()) }), flush: () => {} },
+    SpreadsheetApp: { openById: () => ({ getSpreadsheetTimeZone: () => 'Asia/Taipei', getSheetByName: name => sheets[name] || null, insertSheet: name => (sheets[name] = makeSheet()) }), flush: () => {} },
+    Utilities: { formatDate: (date, zone) => { const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date).map(part => [part.type, part.value])); return `${parts.year}-${parts.month}-${parts.day}`; } },
     LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
     HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode() { return this; } }) },
     console, Date, JSON, String, Number, Math, isFinite
@@ -68,6 +69,30 @@ test('前後測只配對課前先於課後的同一員工，並計算各主題�
   assert.equal(result.categoryRates[0].pre, 100);
   assert.equal(result.categoryRates[0].post, 100);
   assert.equal(JSON.stringify(result).includes('A001'), false);
+});
+
+test('依試算表時區切換日期，前後測與重測只計入所選日期', () => {
+  const { context, rows, sheets } = loadBackend();
+  function send(id, assessment, participant, time, answers) {
+    context.doPost({ parameter: { attemptId: id, assessment, participant, answers, durationSeconds: '60' } });
+    const target = assessment === 'pre' ? sheets['課前測紀錄'].rows : rows;
+    target[target.length - 1][0] = new Date(time);
+  }
+  send('123e4567-e89b-42d3-a456-426614174030', 'pre', 'A001', '2026-10-04T16:30:00Z', 'AAAAAAAAAAAA');
+  send('123e4567-e89b-42d3-a456-426614174031', 'post', 'A001', '2026-10-05T03:00:00Z', 'BDBCBDBACBCB');
+  send('123e4567-e89b-42d3-a456-426614174032', 'pre', 'A001', '2026-10-06T16:30:00Z', 'AAAAAAAAAAAA');
+  send('123e4567-e89b-42d3-a456-426614174033', 'post', 'A001', '2026-10-07T03:00:00Z', 'AAAAAAAAAAAA');
+  const spreadsheet = context.SpreadsheetApp.openById('test');
+  const dates = context.getAvailableDates_(spreadsheet, 'Asia/Taipei');
+  assert.equal(JSON.stringify(dates), JSON.stringify(['2026-10-07', '2026-10-05']));
+  assert.equal(context.buildStats_('2026-10-05', 'Asia/Taipei').passed, 1);
+  assert.equal(context.buildStats_('2026-10-07', 'Asia/Taipei').passed, 0);
+  assert.equal(context.buildComparison_('2026-10-05', 'Asia/Taipei').paired, 1);
+  assert.equal(context.buildComparison_('2026-10-07', 'Asia/Taipei').paired, 1);
+  const response = context.doGet({ parameter: { view: 'stats', requestId: '123e4567-e89b-42d3-a456-426614174034', date: '2026-10-05' } });
+  assert.match(response.html, /"selectedDate":"2026-10-05"/);
+  assert.match(response.html, /"passed":1/);
+  assert.doesNotMatch(response.html, /A001/);
 });
 
 test('試算表端重新計分、記錄每次作答，重送同一識別碼不重複', () => {

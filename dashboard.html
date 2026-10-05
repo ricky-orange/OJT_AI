@@ -7,14 +7,14 @@
   <meta name="robots" content="noindex,nofollow">
   <title>學習成效｜AI 教育訓練</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="dashboard.css?v=4">
+  <link rel="stylesheet" href="dashboard.css?v=5">
 </head>
 <body>
   <div class="shell dashboard-shell">
-    <header class="topbar"><span class="brand-mark">AI</span><span>業務部教育訓練</span><a class="topbar-end nav-link" href="index.html">← 返回測驗</a></header>
+    <header class="topbar"><span class="brand-mark">AI</span><span>教育訓練成效</span><label class="topbar-end date-switch" for="session-date">訓練日期 <select id="session-date" aria-label="選擇訓練日期" disabled><option>讀取中…</option></select></label></header>
     <main id="dashboard" aria-live="polite">
       <p class="eyebrow">LEARNING DASHBOARD</p>
-      <div class="dashboard-heading"><div><h1 class="hero-title">學習成效</h1><p class="lead">由「課前測紀錄」與「測驗紀錄」兩個頁籤彙整。</p></div><button class="btn btn-secondary refresh" id="refresh" type="button">更新資料</button></div>
+      <div class="dashboard-heading"><div><h1 class="hero-title">學習成效</h1><p class="lead">依訓練日期彙整「課前測紀錄」與「測驗紀錄」。</p></div><button class="btn btn-secondary refresh" id="refresh" type="button">更新資料</button></div>
       <div id="dashboard-content" role="status">正在讀取 Google 試算表資料…</div>
     </main>
     <footer>資訊部 · 前後測依相同員工編號配對</footer>
@@ -22,6 +22,6 @@
   <iframe id="stats-frame" title="讀取成績統計" hidden></iframe>
   <script src="config.js"></script>
   <script src="quiz.js"></script>
-  <script src="dashboard.js?v=4"></script>
+  <script src="dashboard.js?v=5"></script>
 </body>
 </html>

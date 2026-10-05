@@ -39,8 +39,15 @@ function doGet(e) {
     var requestId = String(e.parameter.requestId || '');
     if (!/^[0-9a-f-]{36}$/i.test(requestId)) return HtmlService.createHtmlOutput('Invalid request');
     try {
-      var payload = buildStats_();
-      payload.comparison = buildComparison_();
+      var spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+      var timeZone = spreadsheet.getSpreadsheetTimeZone();
+      var availableDates = getAvailableDates_(spreadsheet, timeZone);
+      var requestedDate = String(e.parameter.date || '');
+      var selectedDate = availableDates.indexOf(requestedDate) >= 0 ? requestedDate : (availableDates[0] || '');
+      var payload = buildStats_(selectedDate, timeZone);
+      payload.comparison = buildComparison_(selectedDate, timeZone);
+      payload.availableDates = availableDates;
+      payload.selectedDate = selectedDate;
       payload.source = 'ojt-ai-stats';
       payload.requestId = requestId;
       payload.ok = true;
@@ -53,7 +60,28 @@ function doGet(e) {
   return HtmlService.createHtmlOutput('AI 教育訓練測驗接收端已啟用。');
 }
 
-function buildStats_() {
+function recordDate_(value, timeZone) {
+  var date = value instanceof Date ? value : new Date(value);
+  return isFinite(date.getTime()) ? Utilities.formatDate(date, timeZone, 'yyyy-MM-dd') : '';
+}
+
+function getAvailableDates_(spreadsheet, timeZone) {
+  var dates = {};
+  [PRETEST_SHEET_NAME, SHEET_NAME].forEach(function (name) {
+    var sheet = spreadsheet.getSheetByName(name);
+    if (!sheet || sheet.getLastRow() < 2) return;
+    var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS.length).getValues();
+    rows.forEach(function (row) {
+      var participant = String(row[1] || '').trim();
+      if (!participant || participant.indexOf('TEST-CODEX-') === 0) return;
+      var date = recordDate_(row[0], timeZone);
+      if (date) dates[date] = true;
+    });
+  });
+  return Object.keys(dates).sort().reverse();
+}
+
+function buildStats_(selectedDate, timeZone) {
   var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
   if (!sheet || sheet.getLastRow() < 2) return emptyStats_();
   var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS.length).getValues();
@@ -61,6 +89,7 @@ function buildStats_() {
   var latest = {};
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
+    if (selectedDate && recordDate_(row[0], timeZone) !== selectedDate) continue;
     var participant = String(row[1] || '').trim();
     var score = Number(row[3]);
     var answers = row.slice(7, 19).map(function (value) { return String(value).toUpperCase(); });

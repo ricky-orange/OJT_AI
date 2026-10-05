@@ -3,9 +3,11 @@
   const content = document.getElementById('dashboard-content');
   const frame = document.getElementById('stats-frame');
   const button = document.getElementById('refresh');
+  const dateSelect = document.getElementById('session-date');
   const categories = window.OJT_CATEGORIES;
   let requestId = '';
   let timer;
+  let selectedDate = new URL(window.location.href).searchParams.get('date') || '';
   const scriptUrl = (window.OJT_CONFIG.scriptUrl || '').trim();
   const validUrl = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec(?:\?.*)?$/.test(scriptUrl);
   const percent = n => `${Math.max(0, Math.min(100, Number(n) || 0))}%`;
@@ -23,6 +25,7 @@
     const url = new URL(scriptUrl);
     url.searchParams.set('view', 'stats');
     url.searchParams.set('requestId', requestId);
+    if (selectedDate) url.searchParams.set('date', selectedDate);
     frame.src = url.toString();
     timer = setTimeout(() => { button.disabled = false; content.className = 'empty-state'; content.textContent = '資料讀取逾時，請按「更新資料」重試。'; }, 20000);
   }
@@ -33,6 +36,15 @@
   }
 
   function render(data) {
+    const dates = Array.isArray(data.availableDates) ? data.availableDates.filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)) : [];
+    selectedDate = dates.includes(data.selectedDate) ? data.selectedDate : (dates[0] || '');
+    dateSelect.innerHTML = dates.length ? dates.map(value => `<option value="${value}">${value.replace(/-/g, '/')}</option>`).join('') : '<option>尚無紀錄</option>';
+    dateSelect.disabled = !dates.length;
+    if (selectedDate) dateSelect.value = selectedDate;
+    const pageUrl = new URL(window.location.href);
+    if (selectedDate) pageUrl.searchParams.set('date', selectedDate);
+    else pageUrl.searchParams.delete('date');
+    window.history.replaceState(null, '', pageUrl);
     const attempts = Number(data.attempts) || 0;
     const participants = Number(data.participants) || 0;
     const comparison = data.comparison || {};
@@ -84,5 +96,6 @@
     else { content.className = 'empty-state'; content.textContent = '目前無法讀取成績統計，請稍後重試。'; }
   });
   button.addEventListener('click', load);
+  dateSelect.addEventListener('change', () => { selectedDate = dateSelect.value; load(); });
   load();
 })();
