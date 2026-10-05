@@ -26,6 +26,9 @@ test('儀表板讀取 Apps Script 彙總資料並顯示 KPI，不渲染個人識
   assert.match(content.innerHTML, /資料安全與對外發信/);
   assert.match(content.innerHTML, /前後測成效比較/);
   assert.match(content.innerHTML, /\+28 分/);
+  assert.match(content.innerHTML, /平均分數前後對照/);
+  assert.match(content.innerHTML, /average-fill before/);
+  assert.match(content.innerHTML, /average-fill after/);
   assert.match(content.innerHTML, /完成配對/);
   assert.doesNotMatch(content.innerHTML, /SECRET001/);
   assert.equal(button.disabled, false);
