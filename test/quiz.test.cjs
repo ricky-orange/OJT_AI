@@ -26,3 +26,9 @@ test('12 題中答對 10 題即及格', () => {
   assert.equal(context.window.OJT_SCORE(answers).score, 75);
   assert.equal(context.window.OJT_SCORE(answers).passed, false);
 });
+
+test('四個類型涵蓋全部題目且不重複', () => {
+  const numbers = context.window.OJT_CATEGORIES.flatMap(category => category.questions);
+  assert.equal(numbers.length, 12);
+  assert.deepEqual([...numbers].sort((a, b) => a - b), Array.from({ length: 12 }, (_, i) => i + 1));
+});

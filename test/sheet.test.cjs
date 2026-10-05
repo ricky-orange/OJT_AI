@@ -63,6 +63,11 @@ test('儀表板只回傳彙總資料，重測取每人最近一次，測試列�
   assert.equal(result.passed, 1);
   assert.equal(result.passRate, 50);
   assert.equal(result.questionRates.length, 12);
+  assert.equal(result.categoryRates.length, 4);
+  assert.equal(result.categoryRates[0].label, 'AI 基礎與導入');
+  assert.equal(result.categoryRates[0].rate, 50);
+  assert.equal(result.categoryRates[0].correct, 2);
+  assert.equal(result.categoryRates[0].total, 4);
   assert.equal(JSON.stringify(result).includes('A001'), false);
   const response = context.doGet({ parameter: { view: 'stats', requestId: '123e4567-e89b-42d3-a456-426614174005' } });
   assert.match(response.html, /ojt-ai-stats/);

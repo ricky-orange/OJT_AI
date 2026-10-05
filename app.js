@@ -3,6 +3,7 @@
   const app = document.getElementById("app");
   const config = window.OJT_CONFIG;
   const quiz = window.OJT_QUIZ;
+  const categoryFor = (number) => window.OJT_CATEGORIES.find(category => category.questions.includes(number))?.label || '';
   const letters = ["A", "B", "C", "D"];
   const state = { participant: "", answers: Array(12).fill(""), index: 0, startedAt: 0, attemptId: "", sent: false, submitting: false };
   let pending = null;
@@ -31,7 +32,7 @@
     const index = state.index;
     const item = quiz[index];
     const choices = item.options.map((option, n) => `<label class="choice"><input type="radio" name="answer" value="${letters[n]}" ${state.answers[index] === letters[n] ? "checked" : ""}><span class="choice-letter">${letters[n]}.</span><span>${escapeHtml(option)}</span></label>`).join("");
-    app.innerHTML = `<div class="progress-row"><span>第 ${index + 1} 題／共 12 題</span><span>${Math.round(index / 12 * 100)}% 已完成</span></div><div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:${index / 12 * 100}%"></div></div><p class="eyebrow">QUESTION ${String(index + 1).padStart(2, "0")}</p><h1 class="question-title">${escapeHtml(item.question)}</h1><div class="choices" role="radiogroup" aria-label="第 ${index + 1} 題選項">${choices}</div><p class="error" id="question-error" role="alert"></p><div class="actions"><button class="btn btn-secondary" id="back" type="button">${index === 0 ? "返回首頁" : "上一題"}</button><button class="btn btn-primary" id="next" type="button">${index === 11 ? "檢查答案" : "下一題 →"}</button></div>`;
+    app.innerHTML = `<div class="progress-row"><span>第 ${index + 1} 題／共 12 題</span><span>${Math.round(index / 12 * 100)}% 已完成</span></div><div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:${index / 12 * 100}%"></div></div><p class="eyebrow">QUESTION ${String(index + 1).padStart(2, "0")} <span class="quiz-topic">${escapeHtml(categoryFor(index + 1))}</span></p><h1 class="question-title">${escapeHtml(item.question)}</h1><div class="choices" role="radiogroup" aria-label="第 ${index + 1} 題選項">${choices}</div><p class="error" id="question-error" role="alert"></p><div class="actions"><button class="btn btn-secondary" id="back" type="button">${index === 0 ? "返回首頁" : "上一題"}</button><button class="btn btn-primary" id="next" type="button">${index === 11 ? "檢查答案" : "下一題 →"}</button></div>`;
     document.querySelectorAll('input[name="answer"]').forEach((input) => { input.onchange = () => { state.answers[index] = input.value; document.getElementById("question-error").textContent = ""; }; });
     document.getElementById("back").onclick = () => { if (index === 0) intro(); else { state.index--; question(); } };
     document.getElementById("next").onclick = () => { if (!state.answers[index]) { document.getElementById("question-error").textContent = "請先選擇一個答案。"; return; } if (index === 11) review(); else { state.index++; question(); } };

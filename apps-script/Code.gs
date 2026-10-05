@@ -6,6 +6,12 @@ var SPREADSHEET_ID = 'PASTE_SPREADSHEET_ID_HERE';
 var SHEET_NAME = '測驗紀錄';
 var SITE_ORIGIN = 'https://ricky-orange.github.io';
 var ANSWER_KEY = ['B', 'D', 'B', 'C', 'B', 'D', 'B', 'A', 'C', 'B', 'C', 'B'];
+var CATEGORIES = [
+  { label: 'AI 基礎與導入', questions: [1, 3] },
+  { label: '工作方式與提示詞', questions: [4, 5, 6] },
+  { label: '詢價整理與查核', questions: [2, 7, 8] },
+  { label: '資料安全與對外發信', questions: [9, 10, 11, 12] }
+];
 var HEADERS = ['伺服器時間', '員工編號', '作答識別碼', '分數', '答對題數', '結果', '作答秒數', '第1題', '第2題', '第3題', '第4題', '第5題', '第6題', '第7題', '第8題', '第9題', '第10題', '第11題', '第12題'];
 
 function setupSheet() {
@@ -74,12 +80,17 @@ function buildStats_() {
     averageScore: Math.round(scoreSum / participants),
     passed: passed,
     buckets: buckets,
-    questionRates: correct.map(function (count) { return Math.round(count / participants * 100); })
+    questionRates: correct.map(function (count) { return Math.round(count / participants * 100); }),
+    categoryRates: CATEGORIES.map(function (category) {
+      var correctTotal = category.questions.reduce(function (sum, number) { return sum + correct[number - 1]; }, 0);
+      var answerTotal = participants * category.questions.length;
+      return { label: category.label, questions: category.questions, rate: Math.round(correctTotal / answerTotal * 100), correct: correctTotal, total: answerTotal };
+    })
   };
 }
 
 function emptyStats_() {
-  return { attempts: 0, participants: 0, passRate: 0, averageScore: 0, passed: 0, buckets: [0, 0, 0], questionRates: Array(12).fill(0) };
+  return { attempts: 0, participants: 0, passRate: 0, averageScore: 0, passed: 0, buckets: [0, 0, 0], questionRates: Array(12).fill(0), categoryRates: CATEGORIES.map(function (category) { return { label: category.label, questions: category.questions, rate: 0, correct: 0, total: 0 }; }) };
 }
 
 function doPost(e) {

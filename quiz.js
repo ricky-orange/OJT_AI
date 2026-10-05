@@ -16,3 +16,10 @@ window.OJT_SCORE = function (answers) {
   const correct = window.OJT_QUIZ.reduce((sum, item, index) => sum + (answers[index] === item.answer ? 1 : 0), 0);
   return { correct, total: 12, score: Math.round(correct / 12 * 100), passed: correct >= 10 };
 };
+
+window.OJT_CATEGORIES = Object.freeze([
+  { label: "AI 基礎與導入", questions: [1, 3] },
+  { label: "工作方式與提示詞", questions: [4, 5, 6] },
+  { label: "詢價整理與查核", questions: [2, 7, 8] },
+  { label: "資料安全與對外發信", questions: [9, 10, 11, 12] }
+]);
